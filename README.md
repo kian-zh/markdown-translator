@@ -16,14 +16,12 @@ Open a translated Markdown reader beside the active file in Cursor. The extensio
   Claude 生成译文时即时渲染 Markdown；最终结果会在校验通过后才被缓存。
 - Ask Claude to return Markdown only and preserve code, commands, paths, URLs, frontmatter, HTML tags, identifiers, and proper nouns.
   要求 Claude 只返回 Markdown，并保持代码、命令、路径、URL、Frontmatter、HTML 标签、标识符和专有名词不变。
-- Validate protected Markdown after every response. If Claude changes protected content, the extension retries once and refuses to display an unsafe result.
-  每次响应后校验受保护的 Markdown。若 Claude 改动了受保护内容，扩展会重试一次；仍不符合时不会展示该结果。
+- Validate protected Markdown after every response. When its Markdown structure remains recognisable, the extension restores source code, URLs, tags, and other protected data before rendering; it retries once and refuses to display an unsafe result when safe restoration is impossible.
+  每次响应后校验受保护的 Markdown。若 Markdown 结构仍可识别，扩展会在渲染前恢复源文中的代码、URL、标签和其他受保护数据；无法安全恢复时会重试一次，仍失败则不展示结果。
 - Cache successful translations during the current extension session and cancel obsolete requests when the document or language changes.
   在当前扩展会话中缓存成功译文，并在文档或语言改变时取消过期请求。
 - Editing the source file never starts a new translation automatically; use the reader's refresh button when you want an updated translation.
   编辑源文件不会自动发起新的翻译；需要更新译文时，请使用阅读器内的刷新按钮。
-- Once a translation is complete, scrolling the reader moves the visible source editor to the corresponding Markdown block. This is one-way (translation → source) and does not change your cursor or file.
-  译文完成后，滚动阅读器会将可见的原文编辑器定位到对应的 Markdown 段落块。该联动为单向（译文 → 原文），不会修改光标或文件内容。
 
 ## Requirements / 前置条件
 

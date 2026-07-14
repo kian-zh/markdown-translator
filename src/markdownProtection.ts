@@ -1,6 +1,6 @@
 export type ProtectedContentCheck = { valid: true } | { valid: false; reason: string };
 
-type ProtectedToken = { index: number; value: string };
+type ProtectedToken = { index: number; end: number; value: string; kind: string };
 
 /**
  * Model output is allowed to translate prose only. These Markdown constructs
@@ -14,32 +14,65 @@ export function validateProtectedMarkdown(source: string, translated: string): P
   }
   for (let index = 0; index < originalTokens.length; index++) {
     if (originalTokens[index].value !== translatedTokens[index].value) {
-      return { valid: false, reason: `protected content changed at item ${index + 1}` };
+      return { valid: false, reason: `protected ${originalTokens[index].kind} changed at item ${index + 1}` };
     }
   }
   return { valid: true };
 }
 
+/**
+ * Restores source data after Claude has returned recognisable Markdown. This
+ * keeps the whole document available to the model for context, while making
+ * formatting-only edits to code, URLs, and tags harmless. A missing or
+ * reordered protected construct is deliberately not repaired.
+ */
+export function repairProtectedMarkdown(source: string, translated: string): string | undefined {
+  const sourceTokens = extractProtectedTokens(source);
+  const translatedTokens = extractProtectedTokens(translated);
+  if (sourceTokens.length !== translatedTokens.length) return undefined;
+  if (sourceTokens.some((token, index) => token.kind !== translatedTokens[index].kind)) return undefined;
+
+  let cursor = 0;
+  let repaired = '';
+  for (let index = 0; index < sourceTokens.length; index++) {
+    const sourceToken = sourceTokens[index];
+    const translatedToken = translatedTokens[index];
+    repaired += translated.slice(cursor, translatedToken.index);
+    repaired += sourceToken.value;
+    cursor = translatedToken.end;
+  }
+  return repaired + translated.slice(cursor);
+}
+
 function extractProtectedTokens(markdown: string): ProtectedToken[] {
-  const tokens: ProtectedToken[] = [];
-  const addMatches = (pattern: RegExp, group = 0): void => {
+  const candidates: Array<ProtectedToken & { priority: number }> = [];
+  const addMatches = (kind: string, priority: number, pattern: RegExp, group = 0): void => {
     for (const match of markdown.matchAll(pattern)) {
       const value = match[group];
       const offset = match.indices?.[group]?.[0] ?? match.index ?? 0;
-      if (typeof value === 'string') tokens.push({ index: offset, value });
+      if (typeof value === 'string') candidates.push({ index: offset, end: offset + value.length, value, kind, priority });
     }
   };
 
-  // Frontmatter, fenced/indented code and inline code.
-  addMatches(/^(?:---|\+\+\+)\r?\n[\s\S]*?\r?\n(?:---|\+\+\+)\s*(?:\r?\n|$)/dg);
-  addMatches(/(^|\n)(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\2[^\n]*(?=\n|$)/dg);
-  addMatches(/^(?:(?: {4}|\t).*)(?:\n(?: {4}|\t).*)*/dgm);
-  addMatches(/(`+)([\s\S]*?)\1/dg);
+  // Larger constructs win over their nested components, so every selected
+  // range is non-overlapping and can be safely spliced back into the output.
+  addMatches('frontmatter', 100, /^(?:---|\+\+\+)\r?\n[\s\S]*?\r?\n(?:---|\+\+\+)\s*(?:\r?\n|$)/dg);
+  addMatches('fenced code block', 90, /(^|\n)(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n\2[^\n]*(?=\n|$)/dg);
+  addMatches('indented code block', 80, /^(?:(?: {4}|\t).*)(?:\n(?: {4}|\t).*)*/dgm);
+  addMatches('inline code', 70, /(`+)([\s\S]*?)\1/dg);
 
   // HTML tags/attributes and Markdown destinations are data, not prose.
-  addMatches(/<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>/dg);
-  addMatches(/!?(?:\[[^\]]*\])\(\s*(<[^>]*>|(?:\\.|[^()\s])+)(?:\s+["'][^"']*["'])?\s*\)/dg, 1);
-  addMatches(/<https?:\/\/[^>]+>/dg);
+  addMatches('HTML', 60, /<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>/dg);
+  addMatches('link destination', 50, /!?(?:\[[^\]]*\])\(\s*(<[^>]*>|(?:\\.|[^()\s])+)(?:\s+["'][^"']*["'])?\s*\)/dg, 1);
+  addMatches('autolink', 40, /<https?:\/\/[^>]+>/dg);
 
-  return tokens.sort((left, right) => left.index - right.index || right.value.length - left.value.length);
+  candidates.sort((left, right) => left.index - right.index || right.priority - left.priority || right.value.length - left.value.length);
+  const tokens: ProtectedToken[] = [];
+  let lastEnd = -1;
+  for (const candidate of candidates) {
+    if (candidate.index < lastEnd) continue;
+    tokens.push(candidate);
+    lastEnd = candidate.end;
+  }
+  return tokens;
 }

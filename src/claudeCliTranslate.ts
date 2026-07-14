@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { validateProtectedMarkdown } from './markdownProtection';
+import { repairProtectedMarkdown, validateProtectedMarkdown } from './markdownProtection';
 
 const MAX_DOCUMENT_CHARS = 100_000;
 const TIMEOUT_MS = 120_000;
@@ -77,8 +77,10 @@ export class ClaudeCliTranslate {
     for (let attempt = 0; attempt < 2; attempt++) {
       if (attempt > 0) onProgress?.({ type: 'retry', attempt: attempt + 1 });
       const translated = await this.run(markdown, targetLanguage, attempt === 1, signal, onProgress);
-      const validation = validateProtectedMarkdown(markdown, translated);
-      if (validation.valid) return translated;
+      const repaired = repairProtectedMarkdown(markdown, translated);
+      const result = repaired ?? translated;
+      const validation = validateProtectedMarkdown(markdown, result);
+      if (validation.valid) return result;
       lastValidationFailure = validation.reason;
     }
     throw new Error(`Claude changed protected Markdown content (${lastValidationFailure}). Translation was not displayed.`);

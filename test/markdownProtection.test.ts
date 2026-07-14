@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validateProtectedMarkdown } from '../src/markdownProtection';
+import { repairProtectedMarkdown, validateProtectedMarkdown } from '../src/markdownProtection';
 
 const source = `---
 title: Keep this title
@@ -32,4 +32,21 @@ test('rejects a changed command or URL', () => {
 
   assert.equal(validateProtectedMarkdown(source, changedCommand).valid, false);
   assert.equal(validateProtectedMarkdown(source, changedUrl).valid, false);
+});
+
+test('restores protected Markdown when Claude keeps its outer structure', () => {
+  const source = 'Use [`tool --safe`](https://example.com/docs).\n\n```ts\nconst greeting = "hello";\n```\n';
+  const translated = '使用 [`工具 --安全`](https://example.cn/docs)。\n\n```ts\nconst greeting = "你好";\n```\n';
+
+  const repaired = repairProtectedMarkdown(source, translated);
+
+  assert.equal(repaired, '使用 [`tool --safe`](https://example.com/docs)。\n\n```ts\nconst greeting = "hello";\n```\n');
+  assert.deepEqual(validateProtectedMarkdown(source, repaired ?? ''), { valid: true });
+});
+
+test('does not repair Markdown after a protected block loses its structure', () => {
+  const source = '```ts\nconst answer = 42;\n```\n';
+  const translated = '代码：const answer = 42;\n';
+
+  assert.equal(repairProtectedMarkdown(source, translated), undefined);
 });

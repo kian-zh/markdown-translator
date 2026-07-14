@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { createHash } from 'node:crypto';
 import { ClaudeCliTranslate, TranslationProgress } from './claudeCliTranslate';
-import { mapTranslatedBlocksToSource, renderMarkdown, renderMarkdownBlocks, splitStreamingMarkdown } from './markdown';
-import { isRefreshRequest, isSourceAnchorRequest } from './webviewMessages';
+import { renderMarkdown, splitStreamingMarkdown } from './markdown';
+import { isRefreshRequest } from './webviewMessages';
 
 const MARKDOWN_LANGUAGES = new Set(['markdown', 'mdx']);
 const STREAM_RENDER_INTERVAL_MS = 160;
@@ -48,7 +48,6 @@ class TranslationReader {
       this.panel.webview.html = this.shell(this.panel.webview);
       this.panel.webview.onDidReceiveMessage(message => {
         if (isRefreshRequest(message)) this.refresh();
-        if (isSourceAnchorRequest(message)) this.revealSourceOffset(message.sourceOffset);
         if (message?.type === 'selectLanguage' && typeof message.value === 'string' && (message.value === 'original' || message.value in LANGUAGE_NAMES)) {
           this.activeLanguage = message.value;
           this.refresh();
@@ -122,7 +121,7 @@ class TranslationReader {
           if (!streamTimer) streamTimer = setTimeout(flushStream, STREAM_RENDER_INTERVAL_MS);
         });
       if (streamTimer) clearTimeout(streamTimer);
-      const html = renderMarkdownBlocks(translated, mapTranslatedBlocksToSource(source, translated));
+      const html = renderMarkdown(translated);
       if (generation !== this.generation) return;
       panel.webview.postMessage({ type: 'document', html, fileName, selectedLanguage });
     } catch (error) {
@@ -143,15 +142,6 @@ class TranslationReader {
     const translated = await this.claude.translate(markdown, targetLanguage, signal, onProgress);
     this.cache.set(key, translated);
     return translated;
-  }
-
-  private revealSourceOffset(sourceOffset: number): void {
-    const document = this.document;
-    if (!document) return;
-    const editor = vscode.window.visibleTextEditors.find(candidate => candidate.document.uri.toString() === document.uri.toString());
-    if (!editor) return;
-    const position = document.positionAt(Math.min(sourceOffset, document.getText().length));
-    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.AtTop);
   }
 
   private shell(webview: vscode.Webview): string {
@@ -183,8 +173,6 @@ const state = { active: stored.active || 'zh-CN', extra: Array.isArray(stored.ex
 const base = ['zh-CN', 'original'];
 let elapsedTimer;
 let translationStartedAt;
-let scrollFrame;
-let lastSourceOffset = -1;
 const label = key => key === 'original' ? '原文' : names[key] || key;
 const save = () => vscode.setState(state);
 const safe = value => { const el = document.createElement('span'); el.textContent = value || ''; return el.innerHTML; };
@@ -195,13 +183,11 @@ function select(key) { if (key !== 'zh-CN' && key !== 'original' && !state.extra
 function elapsedText() { return '已用时 ' + Math.floor((Date.now() - translationStartedAt) / 1000) + ' 秒'; }
 function showLoading(fileName, title) { stopElapsed(); translationStartedAt = Date.now(); app.innerHTML = '<div class="file">' + safe(fileName) + '</div><div class="loading"><span class="spinner" aria-hidden="true"></span><div class="loading-copy"><span class="loading-title">' + safe(title || 'Claude Haiku 正在翻译…') + '</span><span class="elapsed" id="elapsed">已用时 0 秒</span></div></div>'; const update = () => { const elapsed = document.getElementById('elapsed'); if (elapsed) elapsed.textContent = elapsedText(); }; elapsedTimer = setInterval(update, 1000); }
 function showStream(fileName, committedHtml, tailHtml) { let committed = document.getElementById('stream-committed'); let tail = document.getElementById('stream-tail'); if (!committed || !tail) { app.innerHTML = '<div class="file live">' + safe(fileName) + '<span class="stream-meta"><span class="spinner" aria-hidden="true"></span><span id="elapsed">生成中 · ' + elapsedText() + '</span></span></div><article class="reader"><section id="stream-committed"></section><section id="stream-tail"></section></article>'; committed = document.getElementById('stream-committed'); tail = document.getElementById('stream-tail'); } if (committedHtml) committed.insertAdjacentHTML('beforeend', committedHtml); tail.innerHTML = tailHtml; }
-function reportScrollAnchor() { scrollFrame = undefined; const blocks = [...document.querySelectorAll('.markdown-block[data-source-offset]')]; if (!blocks.length) return; const anchorY = window.innerHeight * .35; let block = blocks.find(candidate => { const rect = candidate.getBoundingClientRect(); return rect.top <= anchorY && rect.bottom > anchorY; }); if (!block) block = blocks.find(candidate => candidate.getBoundingClientRect().top > anchorY) || blocks[blocks.length - 1]; const sourceOffset = Number(block.dataset.sourceOffset); if (Number.isSafeInteger(sourceOffset) && sourceOffset !== lastSourceOffset) { lastSourceOffset = sourceOffset; vscode.postMessage({type: 'sourceAnchor', sourceOffset}); } }
-window.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(reportScrollAnchor); }, { passive: true });
 tabs.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); });
 chooser.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); });
 document.getElementById('add').addEventListener('click', () => chooser.classList.toggle('visible'));
 document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({type: 'refresh'}));
-window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') { lastSourceOffset = -1; if (state.active === 'original') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">正在渲染原文…</div>'; } else showLoading(message.fileName); } if (message.type === 'stream') showStream(message.fileName, message.committedHtml, message.tailHtml); if (message.type === 'retry') showLoading(message.fileName, '正在进行第 ' + message.attempt + ' 次保护性重试…'); if (message.type === 'empty') { stopElapsed(); app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; } if (message.type === 'error') { stopElapsed(); app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Claude Code could not complete this translation. Confirm that Claude Code is installed and signed in, then try again.</div>'; } if (message.type === 'document') { lastSourceOffset = -1; stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; } });
+window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') { if (state.active === 'original') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">正在渲染原文…</div>'; } else showLoading(message.fileName); } if (message.type === 'stream') showStream(message.fileName, message.committedHtml, message.tailHtml); if (message.type === 'retry') showLoading(message.fileName, '正在进行第 ' + message.attempt + ' 次保护性重试…'); if (message.type === 'empty') { stopElapsed(); app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; } if (message.type === 'error') { stopElapsed(); app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Claude Code could not complete this translation. Confirm that Claude Code is installed and signed in, then try again.</div>'; } if (message.type === 'document') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; } });
 drawTabs();
 vscode.postMessage({type: 'ready'});
 vscode.postMessage({type: 'selectLanguage', value: state.active});
