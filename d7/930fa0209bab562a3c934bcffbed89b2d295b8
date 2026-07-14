@@ -1,0 +1,25 @@
+src/claudeCliTranslate.ts
+  s_acc3c7993cb8ea::t_b0853afbbcb7f0 5,80-83
+test/markdownProtection.test.ts
+  s_acc3c7993cb8ea::t_e41904f71f350d 3,36-52
+README.md
+  s_acc3c7993cb8ea::t_0d006f35601457 19-20
+src/markdownProtection.ts
+  s_acc3c7993cb8ea::t_b0853afbbcb7f0 3,17,23-46,48-49,53,57-62,65-67,69-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "d7930fa0209bab562a3c934bcffbed89b2d295b8",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
