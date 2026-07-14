@@ -1,0 +1,25 @@
+src/extension.ts
+  s_acc3c7993cb8ea::t_8b20538601cd1b 4,100,104-107,110-111,125
+  s_acc3c7993cb8ea::t_7645ffa7aa3d93 194,199
+test/markdown.test.ts
+  s_acc3c7993cb8ea::t_7b6b3e0689aa0d 3,21-35
+src/markdown.ts
+  s_acc3c7993cb8ea::t_a64b02bae33d81 16-20,30-42
+  s_acc3c7993cb8ea::t_af955c1882f084 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "254f4c621dc41fd90a5c3b120daf441121fc78a1",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
