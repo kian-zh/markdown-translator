@@ -39,9 +39,9 @@ npm test
 npm run build
 ```
 
-Launch the `Run Extension` configuration from VS Code/Cursor to test the extension locally. Before publishing, add a 128×128 PNG marketplace icon, then publish the generated VSIX to Open VSX.
+Press `F5` and select `Run Extension` in VS Code/Cursor to open an Extension Development Host. The configuration runs `npm: build` first. While iterating, run the `Watch Extension` task from **Tasks: Run Task**, then reload the development host after changes. Before publishing, publish the generated VSIX to Open VSX.
 
-在 VS Code 或 Cursor 中启动 `Run Extension` 配置即可本地调试。发布前，请添加一张 128×128 PNG 商店图标，再将生成的 VSIX 发布到 Open VSX。
+在 VS Code 或 Cursor 中按 `F5` 并选择 `Run Extension`，即可打开 Extension Development Host；该配置会先执行 `npm: build`。持续开发时，从 **Tasks: Run Task** 启动 `Watch Extension`，代码变更后重新加载开发宿主。发布前，将生成的 VSIX 发布到 Open VSX。
 
 ## License / 许可证
 
