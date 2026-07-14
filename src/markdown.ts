@@ -13,6 +13,11 @@ type Node = {
   start?: number;
   checked?: boolean | null;
   children?: Node[];
+  position?: {
+    end?: {
+      offset?: number;
+    };
+  };
 };
 
 const parser = unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter, ['yaml', 'toml']);
@@ -20,6 +25,21 @@ const parser = unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter, 
 /** Renders Markdown without ever calling a translation provider. */
 export function renderMarkdown(markdown: string): string {
   return render(parser.parse(markdown) as unknown as Node);
+}
+
+/**
+ * Separates completed top-level blocks from the final, still-growing block.
+ * The final block remains replaceable during streaming; earlier blocks can be
+ * appended to the DOM once and never need to be recreated.
+ */
+export function splitStreamingMarkdown(markdown: string): { committed: string; tail: string } {
+  const root = parser.parse(markdown) as unknown as Node;
+  const children = root.children ?? [];
+  if (children.length < 2) return { committed: '', tail: markdown };
+
+  const end = children[children.length - 2].position?.end?.offset;
+  if (end === undefined || end <= 0 || end > markdown.length) return { committed: '', tail: markdown };
+  return { committed: markdown.slice(0, end), tail: markdown.slice(end) };
 }
 
 

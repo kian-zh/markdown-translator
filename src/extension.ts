@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { createHash } from 'node:crypto';
 import { ClaudeCliTranslate, TranslationProgress } from './claudeCliTranslate';
-import { renderMarkdown } from './markdown';
+import { renderMarkdown, splitStreamingMarkdown } from './markdown';
 import { isRefreshRequest } from './webviewMessages';
 
 const MARKDOWN_LANGUAGES = new Set(['markdown', 'mdx']);
@@ -97,12 +97,18 @@ class TranslationReader {
     panel.webview.postMessage({ type: 'loading', fileName, selectedLanguage });
     let streamTimer: NodeJS.Timeout | undefined;
     let pendingMarkdown = '';
+    let committedLength = 0;
     const flushStream = (): void => {
       streamTimer = undefined;
       if (generation !== this.generation || !pendingMarkdown) return;
+      const stream = splitStreamingMarkdown(pendingMarkdown);
+      if (stream.committed.length < committedLength) committedLength = 0;
+      const committed = stream.committed.slice(committedLength);
+      committedLength = stream.committed.length;
       panel.webview.postMessage({
         type: 'stream',
-        html: renderMarkdown(pendingMarkdown),
+        committedHtml: committed ? renderMarkdown(committed) : '',
+        tailHtml: renderMarkdown(stream.tail),
         fileName,
         selectedLanguage
       });
@@ -116,6 +122,7 @@ class TranslationReader {
             if (streamTimer) clearTimeout(streamTimer);
             streamTimer = undefined;
             pendingMarkdown = '';
+            committedLength = 0;
             panel.webview.postMessage({ type: 'retry', fileName, selectedLanguage, attempt: progress.attempt });
             return;
           }
@@ -162,7 +169,6 @@ button { border: 0; background: transparent; color: var(--muted); cursor: pointe
 .chooser { display: none; gap: 5px; flex-wrap: wrap; padding: 8px 0 10px; border-top: 1px solid var(--line); } .chooser.visible { display: flex; } .choice { border: 1px solid var(--line); padding: 4px 7px; font: 10px/1.2 ui-monospace, monospace; } .choice:hover { border-color: var(--amber); color: var(--amber); }
 main { padding: 18px 16px 52px; } .file { font: 10px/1.4 ui-monospace, monospace; letter-spacing: .03em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 18px; } .file.live { display: flex; align-items: center; gap: 6px; } .stream-meta { display: inline-flex; align-items: center; gap: 5px; color: var(--amber); } .stream-meta .spinner { width: 10px; height: 10px; border-width: 1.5px; }
 .status { color: var(--muted); font-style: italic; padding: 28px 0; } .loading { display: flex; align-items: center; gap: 10px; padding: 28px 0; color: var(--muted); } .spinner { width: 15px; height: 15px; flex: 0 0 auto; border: 2px solid color-mix(in srgb, var(--amber) 22%, transparent); border-top-color: var(--amber); border-radius: 50%; animation: spin .75s linear infinite; } .loading-copy { display: grid; gap: 2px; } .loading-title { color: var(--ink); font-style: normal; } .elapsed { font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); } @keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } } .error { border-left: 3px solid #d26a55; padding: 12px; background: color-mix(in srgb, #d26a55 10%, transparent); } .error strong { display: block; font-family: ui-monospace, monospace; font-size: 12px; margin-bottom: 5px; }
-.reader { animation: arrive .25s ease-out; } @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 h1,h2,h3,h4 { font-family: 'Bodoni 72', Georgia, serif; line-height: 1.12; letter-spacing: -.015em; margin: 1.45em 0 .55em; } h1 { font-size: 1.8em; } h2 { font-size: 1.45em; } h3 { font-size: 1.18em; } p { margin: .8em 0; } a { color: var(--amber); } blockquote { margin: 1em 0; padding: .15em 0 .15em 14px; border-left: 2px solid var(--amber); color: color-mix(in srgb, var(--ink) 82%, var(--muted)); } pre { overflow: auto; padding: 12px; border: 1px solid var(--line); background: var(--code); font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; } :not(pre) > code { padding: .12em .28em; background: var(--code); font: .85em ui-monospace, monospace; } ul,ol { padding-left: 1.35em; } .task { color: var(--amber); margin-right: 5px; } hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; } table { width: 100%; border-collapse: collapse; font-size: .9em; } td { border: 1px solid var(--line); padding: 6px; vertical-align: top; } .table-wrap { overflow: auto; } img { max-width: 100%; } details { margin-top: 28px; border-top: 1px solid var(--line); color: var(--muted); } summary { cursor: pointer; padding-top: 8px; font: 10px ui-monospace, monospace; }
 </style></head><body><header><div class="bar"><div class="tabs" id="tabs" role="tablist" aria-label="Translation language"></div><button class="add" id="add" title="Add language">+</button><button class="refresh" id="refresh" title="Refresh translation">↻</button></div><div class="chooser" id="chooser" aria-label="Choose a language"></div></header><main id="app"><div class="status">正在准备中文译文…</div></main>
 <script nonce="${nonce}">
@@ -185,12 +191,12 @@ function drawTabs() { tabs.innerHTML = keys().map(key => '<button class="tab" ro
 function select(key) { if (key !== 'zh-CN' && key !== 'original' && !state.extra.includes(key)) state.extra.push(key); state.active = key; save(); chooser.classList.remove('visible'); drawTabs(); vscode.postMessage({type: 'selectLanguage', value: key}); }
 function elapsedText() { return '已用时 ' + Math.floor((Date.now() - translationStartedAt) / 1000) + ' 秒'; }
 function showLoading(fileName, title) { stopElapsed(); translationStartedAt = Date.now(); app.innerHTML = '<div class="file">' + safe(fileName) + '</div><div class="loading"><span class="spinner" aria-hidden="true"></span><div class="loading-copy"><span class="loading-title">' + safe(title || 'Claude Haiku 正在翻译…') + '</span><span class="elapsed" id="elapsed">已用时 0 秒</span></div></div>'; const update = () => { const elapsed = document.getElementById('elapsed'); if (elapsed) elapsed.textContent = elapsedText(); }; elapsedTimer = setInterval(update, 1000); }
-function showStream(fileName, html) { const nearBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 32; app.innerHTML = '<div class="file live">' + safe(fileName) + '<span class="stream-meta"><span class="spinner" aria-hidden="true"></span><span id="elapsed">生成中 · ' + elapsedText() + '</span></span></div><article class="reader">' + html + '</article>'; if (nearBottom) requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight)); }
+function showStream(fileName, committedHtml, tailHtml) { const nearBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 32; let committed = document.getElementById('stream-committed'); let tail = document.getElementById('stream-tail'); if (!committed || !tail) { app.innerHTML = '<div class="file live">' + safe(fileName) + '<span class="stream-meta"><span class="spinner" aria-hidden="true"></span><span id="elapsed">生成中 · ' + elapsedText() + '</span></span></div><article class="reader"><section id="stream-committed"></section><section id="stream-tail"></section></article>'; committed = document.getElementById('stream-committed'); tail = document.getElementById('stream-tail'); } if (committedHtml) committed.insertAdjacentHTML('beforeend', committedHtml); tail.innerHTML = tailHtml; if (nearBottom) requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight)); }
 tabs.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); });
 chooser.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); });
 document.getElementById('add').addEventListener('click', () => chooser.classList.toggle('visible'));
 document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({type: 'refresh'}));
-window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') { if (state.active === 'original') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">正在渲染原文…</div>'; } else showLoading(message.fileName); } if (message.type === 'stream') showStream(message.fileName, message.html); if (message.type === 'retry') showLoading(message.fileName, '正在进行第 ' + message.attempt + ' 次保护性重试…'); if (message.type === 'empty') { stopElapsed(); app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; } if (message.type === 'error') { stopElapsed(); app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Claude Code could not complete this translation. Confirm that Claude Code is installed and signed in, then try again.</div>'; } if (message.type === 'document') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; } });
+window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') { if (state.active === 'original') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">正在渲染原文…</div>'; } else showLoading(message.fileName); } if (message.type === 'stream') showStream(message.fileName, message.committedHtml, message.tailHtml); if (message.type === 'retry') showLoading(message.fileName, '正在进行第 ' + message.attempt + ' 次保护性重试…'); if (message.type === 'empty') { stopElapsed(); app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; } if (message.type === 'error') { stopElapsed(); app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Claude Code could not complete this translation. Confirm that Claude Code is installed and signed in, then try again.</div>'; } if (message.type === 'document') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; } });
 drawTabs();
 vscode.postMessage({type: 'ready'});
 vscode.postMessage({type: 'selectLanguage', value: state.active});
