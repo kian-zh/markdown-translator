@@ -12,6 +12,8 @@ Open a translated Markdown reader beside the active file in Cursor. The extensio
   默认显示中文译文。可通过标签切换原文或添加其他语言；阅读器内部不会采用双栏布局。
 - Send the complete Markdown document to one local Claude Code invocation, rather than making hundreds of short web-translation requests.
   将完整 Markdown 文档交给一次本机 Claude Code 调用，而不是发起数百个短文本网页翻译请求。
+- Render the translated Markdown as Claude generates it. The final result is then validated before it is cached.
+  Claude 生成译文时即时渲染 Markdown；最终结果会在校验通过后才被缓存。
 - Ask Claude to return Markdown only and preserve code, commands, paths, URLs, frontmatter, HTML tags, identifiers, and proper nouns.
   要求 Claude 只返回 Markdown，并保持代码、命令、路径、URL、Frontmatter、HTML 标签、标识符和专有名词不变。
 - Validate protected Markdown after every response. If Claude changes protected content, the extension retries once and refuses to display an unsafe result.

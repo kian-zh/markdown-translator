@@ -17,6 +17,23 @@ type ClaudeResponse = {
   usage?: ClaudeUsage;
 };
 
+type ClaudeStreamEvent = ClaudeResponse & {
+  type?: string;
+  subtype?: string;
+  attempt?: number;
+  max_retries?: number;
+  event?: {
+    delta?: {
+      type?: string;
+      text?: string;
+    };
+  };
+};
+
+export type TranslationProgress =
+  | { type: 'markdown'; markdown: string }
+  | { type: 'retry'; attempt: number };
+
 let resolvedBinary: string | undefined;
 
 export function claudeArguments(targetLanguage: string): string[] {
@@ -28,7 +45,9 @@ export function claudeArguments(targetLanguage: string): string[] {
     '--effort', 'low',
     '--max-turns', '1',
     '-p',
-    '--output-format', 'json',
+    '--output-format', 'stream-json',
+    '--verbose',
+    '--include-partial-messages',
     buildTranslationPrompt(targetLanguage)
   ];
 }
@@ -49,14 +68,15 @@ export function buildTranslationPrompt(targetLanguage: string, strict = false): 
 }
 
 export class ClaudeCliTranslate {
-  async translate(markdown: string, targetLanguage: string, signal?: AbortSignal): Promise<string> {
+  async translate(markdown: string, targetLanguage: string, signal?: AbortSignal, onProgress?: (progress: TranslationProgress) => void): Promise<string> {
     if (markdown.length > MAX_DOCUMENT_CHARS) {
       throw new Error(`Document is ${markdown.length.toLocaleString()} characters; the Claude translation limit is ${MAX_DOCUMENT_CHARS.toLocaleString()}.`);
     }
 
     let lastValidationFailure = '';
     for (let attempt = 0; attempt < 2; attempt++) {
-      const translated = await this.run(markdown, targetLanguage, attempt === 1, signal);
+      if (attempt > 0) onProgress?.({ type: 'retry', attempt: attempt + 1 });
+      const translated = await this.run(markdown, targetLanguage, attempt === 1, signal, onProgress);
       const validation = validateProtectedMarkdown(markdown, translated);
       if (validation.valid) return translated;
       lastValidationFailure = validation.reason;
@@ -64,7 +84,7 @@ export class ClaudeCliTranslate {
     throw new Error(`Claude changed protected Markdown content (${lastValidationFailure}). Translation was not displayed.`);
   }
 
-  private async run(markdown: string, targetLanguage: string, strict: boolean, signal?: AbortSignal): Promise<string> {
+  private async run(markdown: string, targetLanguage: string, strict: boolean, signal?: AbortSignal, onProgress?: (progress: TranslationProgress) => void): Promise<string> {
     const binary = resolveClaudeBinary();
     const args = claudeArguments(targetLanguage);
     args[args.length - 1] = buildTranslationPrompt(targetLanguage, strict);
@@ -75,8 +95,10 @@ export class ClaudeCliTranslate {
         shell: false,
         stdio: ['pipe', 'pipe', 'pipe']
       });
-      let stdout = '';
+      let remaining = '';
       let stderr = '';
+      let streamedMarkdown = '';
+      let finalResult: string | undefined;
       let settled = false;
       const finish = (callback: () => void): void => {
         if (settled) return;
@@ -96,7 +118,27 @@ export class ClaudeCliTranslate {
 
       if (signal?.aborted) return abort();
       signal?.addEventListener('abort', abort, { once: true });
-      child.stdout.on('data', chunk => { stdout += chunk.toString(); });
+      const readStreamLine = (line: string): void => {
+        if (!line.trim()) return;
+        let event: ClaudeStreamEvent;
+        try {
+          event = JSON.parse(line) as ClaudeStreamEvent;
+        } catch {
+          return;
+        }
+        const delta = event.event?.delta;
+        if (event.type === 'stream_event' && delta?.type === 'text_delta' && typeof delta.text === 'string') {
+          streamedMarkdown += delta.text;
+          onProgress?.({ type: 'markdown', markdown: streamedMarkdown });
+        }
+        if (event.type === 'result' && typeof event.result === 'string') finalResult = event.result;
+      };
+      child.stdout.on('data', chunk => {
+        remaining += chunk.toString();
+        const lines = remaining.split(/\r?\n/);
+        remaining = lines.pop() ?? '';
+        for (const line of lines) readStreamLine(line);
+      });
       child.stderr.on('data', chunk => { stderr += chunk.toString(); });
       child.on('error', error => finish(() => reject(new Error(`Could not start Claude Code: ${error.message}`))));
       child.on('close', code => finish(() => {
@@ -104,15 +146,13 @@ export class ClaudeCliTranslate {
           reject(new Error(stderr.trim() || `Claude Code exited with code ${code}. Check that Claude Code is installed and signed in.`));
           return;
         }
-        try {
-          const response = JSON.parse(stdout) as ClaudeResponse;
-          if (typeof response.result !== 'string' || !response.result.trim()) {
-            throw new Error('Claude Code returned no Markdown result.');
-          }
-          resolve(response.result);
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error('Claude Code returned invalid JSON.'));
+        readStreamLine(remaining);
+        const result = finalResult ?? streamedMarkdown;
+        if (!result.trim()) {
+          reject(new Error('Claude Code returned no Markdown result.'));
+          return;
         }
+        resolve(result);
       }));
       child.stdin.end(markdown);
     });

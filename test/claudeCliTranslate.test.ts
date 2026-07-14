@@ -9,7 +9,8 @@ test('uses a logged-in local Claude Code invocation with Haiku low effort', () =
     '--safe-mode', '--tools', '', '--no-session-persistence',
     '--model', 'haiku', '--effort', 'low', '--max-turns', '1'
   ]);
-  assert.ok(args.includes('--output-format'));
+  assert.deepEqual(args.slice(10, 14), ['-p', '--output-format', 'stream-json', '--verbose']);
+  assert.ok(args.includes('--include-partial-messages'));
   assert.match(args.at(-1) ?? '', /standard input/);
 });
 

@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import { createHash } from 'node:crypto';
-import { ClaudeCliTranslate } from './claudeCliTranslate';
+import { ClaudeCliTranslate, TranslationProgress } from './claudeCliTranslate';
 import { renderMarkdown } from './markdown';
 import { isRefreshRequest } from './webviewMessages';
 
 const MARKDOWN_LANGUAGES = new Set(['markdown', 'mdx']);
+const STREAM_RENDER_INTERVAL_MS = 160;
 const LANGUAGE_NAMES: Record<string, string> = {
   'zh-CN': '中文', 'zh-TW': '繁體中文', en: 'English', ja: '日本語',
   ko: '한국어', es: 'Español', fr: 'Français', de: 'Deutsch'
@@ -94,14 +95,39 @@ class TranslationReader {
     const fileName = vscode.workspace.asRelativePath(document.uri);
     const selectedLanguage = this.activeLanguage;
     panel.webview.postMessage({ type: 'loading', fileName, selectedLanguage });
+    let streamTimer: NodeJS.Timeout | undefined;
+    let pendingMarkdown = '';
+    const flushStream = (): void => {
+      streamTimer = undefined;
+      if (generation !== this.generation || !pendingMarkdown) return;
+      panel.webview.postMessage({
+        type: 'stream',
+        html: renderMarkdown(pendingMarkdown),
+        fileName,
+        selectedLanguage
+      });
+    };
     try {
       const translated = selectedLanguage === 'original'
         ? source
-        : await this.translateCached(source, selectedLanguage, request.signal);
+        : await this.translateCached(source, selectedLanguage, request.signal, progress => {
+          if (generation !== this.generation) return;
+          if (progress.type === 'retry') {
+            if (streamTimer) clearTimeout(streamTimer);
+            streamTimer = undefined;
+            pendingMarkdown = '';
+            panel.webview.postMessage({ type: 'retry', fileName, selectedLanguage, attempt: progress.attempt });
+            return;
+          }
+          pendingMarkdown = progress.markdown;
+          if (!streamTimer) streamTimer = setTimeout(flushStream, STREAM_RENDER_INTERVAL_MS);
+        });
+      if (streamTimer) clearTimeout(streamTimer);
       const html = renderMarkdown(translated);
       if (generation !== this.generation) return;
       panel.webview.postMessage({ type: 'document', html, fileName, selectedLanguage });
     } catch (error) {
+      if (streamTimer) clearTimeout(streamTimer);
       if (generation !== this.generation) return;
       const message = error instanceof Error ? error.message : 'Unknown translation error';
       panel.webview.postMessage({ type: 'error', message, selectedLanguage });
@@ -110,12 +136,12 @@ class TranslationReader {
     }
   }
 
-  private async translateCached(markdown: string, targetLanguage: string, signal: AbortSignal): Promise<string> {
+  private async translateCached(markdown: string, targetLanguage: string, signal: AbortSignal, onProgress: (progress: TranslationProgress) => void): Promise<string> {
     const digest = createHash('sha256').update(markdown).digest('hex');
     const key = `${targetLanguage}\u0000${digest}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
-    const translated = await this.claude.translate(markdown, targetLanguage, signal);
+    const translated = await this.claude.translate(markdown, targetLanguage, signal, onProgress);
     this.cache.set(key, translated);
     return translated;
   }
@@ -134,7 +160,7 @@ header { position: sticky; top: 0; z-index: 2; padding: 7px 16px 0; background: 
 button { border: 0; background: transparent; color: var(--muted); cursor: pointer; } .tab { position: relative; flex: 0 0 auto; padding: 7px 8px 8px; font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; } .tab:hover { color: var(--ink); } .tab[aria-selected="true"] { color: var(--ink); } .tab[aria-selected="true"]::after { content: ''; position: absolute; right: 8px; bottom: -1px; left: 8px; height: 2px; background: var(--amber); }
 .add, .refresh { flex: 0 0 auto; padding: 6px 7px 8px; color: var(--muted); font: 14px/1 ui-monospace, monospace; } .add:hover, .refresh:hover { color: var(--amber); }
 .chooser { display: none; gap: 5px; flex-wrap: wrap; padding: 8px 0 10px; border-top: 1px solid var(--line); } .chooser.visible { display: flex; } .choice { border: 1px solid var(--line); padding: 4px 7px; font: 10px/1.2 ui-monospace, monospace; } .choice:hover { border-color: var(--amber); color: var(--amber); }
-main { padding: 18px 16px 52px; } .file { font: 10px/1.4 ui-monospace, monospace; letter-spacing: .03em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 18px; }
+main { padding: 18px 16px 52px; } .file { font: 10px/1.4 ui-monospace, monospace; letter-spacing: .03em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 18px; } .file.live { display: flex; align-items: center; gap: 6px; } .stream-meta { display: inline-flex; align-items: center; gap: 5px; color: var(--amber); } .stream-meta .spinner { width: 10px; height: 10px; border-width: 1.5px; }
 .status { color: var(--muted); font-style: italic; padding: 28px 0; } .loading { display: flex; align-items: center; gap: 10px; padding: 28px 0; color: var(--muted); } .spinner { width: 15px; height: 15px; flex: 0 0 auto; border: 2px solid color-mix(in srgb, var(--amber) 22%, transparent); border-top-color: var(--amber); border-radius: 50%; animation: spin .75s linear infinite; } .loading-copy { display: grid; gap: 2px; } .loading-title { color: var(--ink); font-style: normal; } .elapsed { font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); } @keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } } .error { border-left: 3px solid #d26a55; padding: 12px; background: color-mix(in srgb, #d26a55 10%, transparent); } .error strong { display: block; font-family: ui-monospace, monospace; font-size: 12px; margin-bottom: 5px; }
 .reader { animation: arrive .25s ease-out; } @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 h1,h2,h3,h4 { font-family: 'Bodoni 72', Georgia, serif; line-height: 1.12; letter-spacing: -.015em; margin: 1.45em 0 .55em; } h1 { font-size: 1.8em; } h2 { font-size: 1.45em; } h3 { font-size: 1.18em; } p { margin: .8em 0; } a { color: var(--amber); } blockquote { margin: 1em 0; padding: .15em 0 .15em 14px; border-left: 2px solid var(--amber); color: color-mix(in srgb, var(--ink) 82%, var(--muted)); } pre { overflow: auto; padding: 12px; border: 1px solid var(--line); background: var(--code); font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; } :not(pre) > code { padding: .12em .28em; background: var(--code); font: .85em ui-monospace, monospace; } ul,ol { padding-left: 1.35em; } .task { color: var(--amber); margin-right: 5px; } hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; } table { width: 100%; border-collapse: collapse; font-size: .9em; } td { border: 1px solid var(--line); padding: 6px; vertical-align: top; } .table-wrap { overflow: auto; } img { max-width: 100%; } details { margin-top: 28px; border-top: 1px solid var(--line); color: var(--muted); } summary { cursor: pointer; padding-top: 8px; font: 10px ui-monospace, monospace; }
@@ -149,6 +175,7 @@ const stored = vscode.getState() || {};
 const state = { active: stored.active || 'zh-CN', extra: Array.isArray(stored.extra) ? stored.extra : [] };
 const base = ['zh-CN', 'original'];
 let elapsedTimer;
+let translationStartedAt;
 const label = key => key === 'original' ? '原文' : names[key] || key;
 const save = () => vscode.setState(state);
 const safe = value => { const el = document.createElement('span'); el.textContent = value || ''; return el.innerHTML; };
@@ -156,12 +183,14 @@ const keys = () => [...base.slice(0, 1), ...state.extra.filter(key => key !== 'z
 const stopElapsed = () => { if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = undefined; } };
 function drawTabs() { tabs.innerHTML = keys().map(key => '<button class="tab" role="tab" data-language="' + key + '" aria-selected="' + (key === state.active) + '">' + safe(label(key)) + '</button>').join(''); const available = Object.keys(names).filter(key => !keys().includes(key)); chooser.innerHTML = available.map(key => '<button class="choice" data-language="' + key + '">' + safe(label(key)) + '</button>').join('') || '<span class="status">All languages are open.</span>'; }
 function select(key) { if (key !== 'zh-CN' && key !== 'original' && !state.extra.includes(key)) state.extra.push(key); state.active = key; save(); chooser.classList.remove('visible'); drawTabs(); vscode.postMessage({type: 'selectLanguage', value: key}); }
-function showLoading(fileName) { stopElapsed(); const started = Date.now(); app.innerHTML = '<div class="file">' + safe(fileName) + '</div><div class="loading"><span class="spinner" aria-hidden="true"></span><div class="loading-copy"><span class="loading-title">Claude Haiku 正在翻译…</span><span class="elapsed" id="elapsed">已用时 0 秒</span></div></div>'; const update = () => { const elapsed = document.getElementById('elapsed'); if (elapsed) elapsed.textContent = '已用时 ' + Math.floor((Date.now() - started) / 1000) + ' 秒'; }; elapsedTimer = setInterval(update, 1000); }
+function elapsedText() { return '已用时 ' + Math.floor((Date.now() - translationStartedAt) / 1000) + ' 秒'; }
+function showLoading(fileName, title) { stopElapsed(); translationStartedAt = Date.now(); app.innerHTML = '<div class="file">' + safe(fileName) + '</div><div class="loading"><span class="spinner" aria-hidden="true"></span><div class="loading-copy"><span class="loading-title">' + safe(title || 'Claude Haiku 正在翻译…') + '</span><span class="elapsed" id="elapsed">已用时 0 秒</span></div></div>'; const update = () => { const elapsed = document.getElementById('elapsed'); if (elapsed) elapsed.textContent = elapsedText(); }; elapsedTimer = setInterval(update, 1000); }
+function showStream(fileName, html) { const nearBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 32; app.innerHTML = '<div class="file live">' + safe(fileName) + '<span class="stream-meta"><span class="spinner" aria-hidden="true"></span><span id="elapsed">生成中 · ' + elapsedText() + '</span></span></div><article class="reader">' + html + '</article>'; if (nearBottom) requestAnimationFrame(() => window.scrollTo(0, document.documentElement.scrollHeight)); }
 tabs.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); });
 chooser.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); });
 document.getElementById('add').addEventListener('click', () => chooser.classList.toggle('visible'));
 document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({type: 'refresh'}));
-window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') { if (state.active === 'original') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">正在渲染原文…</div>'; } else showLoading(message.fileName); } if (message.type === 'empty') { stopElapsed(); app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; } if (message.type === 'error') { stopElapsed(); app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Claude Code could not complete this translation. Confirm that Claude Code is installed and signed in, then try again.</div>'; } if (message.type === 'document') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; } });
+window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') { if (state.active === 'original') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">正在渲染原文…</div>'; } else showLoading(message.fileName); } if (message.type === 'stream') showStream(message.fileName, message.html); if (message.type === 'retry') showLoading(message.fileName, '正在进行第 ' + message.attempt + ' 次保护性重试…'); if (message.type === 'empty') { stopElapsed(); app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; } if (message.type === 'error') { stopElapsed(); app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Claude Code could not complete this translation. Confirm that Claude Code is installed and signed in, then try again.</div>'; } if (message.type === 'document') { stopElapsed(); app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; } });
 drawTabs();
 vscode.postMessage({type: 'ready'});
 vscode.postMessage({type: 'selectLanguage', value: state.active});
