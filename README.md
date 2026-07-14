@@ -1,37 +1,47 @@
 # Markdown Translator / Markdown 文档翻译器
 
-Open a translation reader beside the active Markdown file in Cursor, translated directly through Google Translate's web service. Code stays exactly as written.
+Open a translated Markdown reader beside the active file in Cursor. The extension uses the Claude Code CLI already signed in on your computer, with Claude Haiku at low effort.
 
-在 Cursor 中于当前 Markdown 文档旁打开译文阅读器，直接使用 Google 翻译网页服务。代码内容保持完全不变。
+在 Cursor 中于当前 Markdown 文件旁打开译文阅读器。扩展复用电脑上已登录的 Claude Code CLI，并使用 Claude Haiku 的 low 推理强度。
 
 ## What it does / 功能
 
-- Opens from the Markdown editor toolbar and appears in a split editor column beside the source file.
-  通过 Markdown 编辑器右上角的按钮打开，并在源文件右侧以分屏编辑器列展示。
-- Follows the active Markdown editor while the reader panel is open.
-  阅读面板打开后，会跟随当前活动的 Markdown 编辑器。
-- Renders a translation in a dedicated sidebar reader.
-  在专用侧边栏阅读器中渲染译文。
-- Keeps fenced code, inline code, YAML/TOML frontmatter, raw HTML, and link URLs out of translation requests.
-  围栏代码块、行内代码、YAML/TOML Frontmatter、原始 HTML 与链接 URL 不会进入翻译请求。
-- Opens Chinese by default, with tabs for the original text and any additional translation languages.
-  默认打开中文译文，并通过标签切换原文或新增的其他语言。
-- Caches repeated text locally for the current extension session.
-  在当前扩展会话中本地缓存重复文本。
+- Open it with the Markdown editor's top-right toolbar button; the reader appears in a split editor column beside the source.
+  通过 Markdown 编辑器右上角的工具栏按钮打开；阅读器会在源文件旁以分屏编辑器列显示。
+- Chinese is the default view. Switch to the original document or add another language through tabs; there is no internal two-column layout.
+  默认显示中文译文。可通过标签切换原文或添加其他语言；阅读器内部不会采用双栏布局。
+- Send the complete Markdown document to one local Claude Code invocation, rather than making hundreds of short web-translation requests.
+  将完整 Markdown 文档交给一次本机 Claude Code 调用，而不是发起数百个短文本网页翻译请求。
+- Ask Claude to return Markdown only and preserve code, commands, paths, URLs, frontmatter, HTML tags, identifiers, and proper nouns.
+  要求 Claude 只返回 Markdown，并保持代码、命令、路径、URL、Frontmatter、HTML 标签、标识符和专有名词不变。
+- Validate protected Markdown after every response. If Claude changes protected content, the extension retries once and refuses to display an unsafe result.
+  每次响应后校验受保护的 Markdown。若 Claude 改动了受保护内容，扩展会重试一次；仍不符合时不会展示该结果。
+- Cache successful translations during the current extension session and cancel obsolete requests when the document or language changes.
+  在当前扩展会话中缓存成功译文，并在文档或语言改变时取消过期请求。
 
-## Privacy and network use / 隐私与网络使用
+## Requirements / 前置条件
 
-This extension has no account, API key, telemetry, or developer-operated backend. Natural-language Markdown text selected for translation is sent directly from your device to Google Translate's web service. Code and the other protected content listed above are not sent.
+Claude Code must be installed and signed in on the same machine that runs Cursor. No API key, extension setting, or separate account configuration is required.
 
-本扩展不需要账户或 API Key，不收集遥测数据，也没有开发者运营的后端服务。需要翻译的 Markdown 自然语言文本会从你的设备直接发送到 Google 翻译网页服务；代码及上文列出的受保护内容不会发送。
+运行 Cursor 的同一台电脑必须已经安装并登录 Claude Code。不需要 API Key、扩展设置或额外账户配置。
 
-The Google web endpoint is not a documented, supported public API. It can be unavailable because of network restrictions, rate limits, or upstream changes. This extension does not provide a fallback provider, proxy, or mirror.
+```sh
+claude --version
+```
 
-Google 网页接口不是公开文档化或官方支持的 API，可能因网络限制、限流或上游变更而不可用。本扩展不提供备用翻译服务、代理或镜像。
+If this command is unavailable, install Claude Code and complete its normal sign-in flow first. The extension runs Claude with `--safe-mode`, disables tools, and uses `--no-session-persistence`.
 
-Do not use it to translate confidential text unless your organisation permits sending that text to Google.
+如果该命令不可用，请先安装 Claude Code 并完成其常规登录流程。扩展会以 `--safe-mode` 运行 Claude、禁用工具，并使用 `--no-session-persistence`。
 
-除非你的组织允许将文本发送给 Google，否则请勿使用本扩展翻译机密内容。
+## Privacy and cost / 隐私与费用
+
+There is no developer-operated proxy, API key, telemetry, or server. The full Markdown document is passed from the extension to your local Claude Code CLI, which then sends it through your Claude account to Anthropic. This includes code and other protected content so that Claude can preserve document structure; the extension checks that those protected constructs return unchanged.
+
+本扩展没有开发者运营的代理、API Key、遥测或服务器。完整 Markdown 文档会从扩展交给本机 Claude Code CLI，再通过你的 Claude 账户发送给 Anthropic。为保持文档结构，代码等受保护内容也会随文档发送；扩展会检查它们是否原样返回。
+
+Translation consumes your Claude plan or account usage. Do not translate confidential material unless your organisation permits sending it to Anthropic.
+
+翻译会消耗你的 Claude 套餐或账户用量。除非你的组织允许将机密材料发送给 Anthropic，否则请勿使用本扩展翻译机密内容。
 
 ## Development / 开发
 

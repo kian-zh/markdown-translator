@@ -15,72 +15,13 @@ type Node = {
   children?: Node[];
 };
 
-export interface RenderedMarkdown {
-  translatedHtml: string;
-}
-
 const parser = unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter, ['yaml', 'toml']);
-
-export async function translateMarkdown(
-  markdown: string,
-  translate: (text: string) => Promise<string>
-): Promise<RenderedMarkdown> {
-  const translated = parser.parse(markdown) as unknown as Node;
-  const textNodes: Node[] = [];
-  collectTranslatableText(translated, [], textNodes);
-
-  for (const node of textNodes) {
-    node.value = await translateInChunks(node.value ?? '', translate);
-  }
-
-  return { translatedHtml: render(translated) };
-}
 
 /** Renders Markdown without ever calling a translation provider. */
 export function renderMarkdown(markdown: string): string {
   return render(parser.parse(markdown) as unknown as Node);
 }
 
-function collectTranslatableText(node: Node, ancestors: string[], found: Node[]): void {
-  const protectedNodeTypes = new Set(['code', 'inlineCode', 'html', 'yaml', 'toml', 'definition']);
-  if (node.type === 'text' && !ancestors.some(type => protectedNodeTypes.has(type))) {
-    found.push(node);
-  }
-  for (const child of node.children ?? []) {
-    collectTranslatableText(child, [...ancestors, node.type], found);
-  }
-}
-
-async function translateInChunks(text: string, translate: (text: string) => Promise<string>): Promise<string> {
-  if (!text.trim()) return text;
-  const chunks = splitForWebTranslate(text, 450);
-  const translated = await Promise.all(chunks.map(async chunk => ({
-    raw: chunk,
-    value: chunk.trim() ? await translate(chunk) : chunk
-  })));
-  return translated.map(chunk => preserveOuterWhitespace(chunk.raw, chunk.value)).join('');
-}
-
-function splitForWebTranslate(text: string, maxLength: number): string[] {
-  if (text.length <= maxLength) return [text];
-  const pieces: string[] = [];
-  let remaining = text;
-  while (remaining.length > maxLength) {
-    const candidates = [remaining.lastIndexOf('. ', maxLength), remaining.lastIndexOf('。', maxLength), remaining.lastIndexOf(' ', maxLength)];
-    const boundary = Math.max(...candidates);
-    const index = boundary > maxLength * 0.45 ? boundary + 1 : maxLength;
-    pieces.push(remaining.slice(0, index));
-    remaining = remaining.slice(index);
-  }
-  pieces.push(remaining);
-  return pieces;
-}
-
-function preserveOuterWhitespace(original: string, translated: string): string {
-  const leading = original.match(/^\s*/)?.[0] ?? '';
-  const trailing = original.match(/\s*$/)?.[0] ?? '';
-  return `${leading}${translated.trim()}${trailing}`;
-}
 
 function render(node: Node): string {
   const children = () => (node.children ?? []).map(render).join('');

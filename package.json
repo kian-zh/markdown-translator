@@ -1,7 +1,7 @@
 {
   "name": "markdown-translator",
   "displayName": "Markdown Translator",
-  "description": "Read Markdown translations in Cursor without translating code.",
+  "description": "Read Markdown translations in Cursor with your local Claude Code CLI.",
   "version": "0.1.0",
   "publisher": "kian-zh",
   "license": "MIT",
@@ -18,11 +18,15 @@
   "keywords": [
     "markdown",
     "translate",
-    "google translate",
+    "claude code",
+    "claude",
     "cursor"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
+  "extensionKind": [
+    "ui"
+  ],
   "icon": "media/icon.png",
   "contributes": {
     "commands": [
@@ -64,7 +68,6 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
-    "google-translate-token-with-mirror": "^1.3.1",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",

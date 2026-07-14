@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { GoogleWebTranslate } from './googleWebTranslate';
-import { renderMarkdown, translateMarkdown } from './markdown';
+import { createHash } from 'node:crypto';
+import { ClaudeCliTranslate } from './claudeCliTranslate';
+import { renderMarkdown } from './markdown';
 import { isRefreshRequest } from './webviewMessages';
 
 const MARKDOWN_LANGUAGES = new Set(['markdown', 'mdx']);
@@ -24,11 +25,12 @@ export function activate(context: vscode.ExtensionContext): void {
 class TranslationReader {
   private panel?: vscode.WebviewPanel;
   document?: vscode.TextDocument;
-  private readonly google = new GoogleWebTranslate();
+  private readonly claude = new ClaudeCliTranslate();
   private readonly cache = new Map<string, string>();
   private activeLanguage = 'zh-CN';
   private generation = 0;
   private timer?: NodeJS.Timeout;
+  private activeRequest?: AbortController;
 
   open(): void {
     const document = vscode.window.activeTextEditor?.document;
@@ -55,6 +57,8 @@ class TranslationReader {
         }
       });
       this.panel.onDidDispose(() => {
+        this.activeRequest?.abort();
+        this.activeRequest = undefined;
         this.panel = undefined;
         this.document = undefined;
         this.generation++;
@@ -83,28 +87,35 @@ class TranslationReader {
     if (!panel || !document) return;
 
     const generation = ++this.generation;
+    this.activeRequest?.abort();
+    const request = new AbortController();
+    this.activeRequest = request;
     const source = document.getText();
     const fileName = vscode.workspace.asRelativePath(document.uri);
     const selectedLanguage = this.activeLanguage;
     panel.webview.postMessage({ type: 'loading', fileName, selectedLanguage });
     try {
-      const html = selectedLanguage === 'original'
-        ? renderMarkdown(source)
-        : (await translateMarkdown(source, text => this.translateCached(text, selectedLanguage))).translatedHtml;
+      const translated = selectedLanguage === 'original'
+        ? source
+        : await this.translateCached(source, selectedLanguage, request.signal);
+      const html = renderMarkdown(translated);
       if (generation !== this.generation) return;
       panel.webview.postMessage({ type: 'document', html, fileName, selectedLanguage });
     } catch (error) {
       if (generation !== this.generation) return;
       const message = error instanceof Error ? error.message : 'Unknown translation error';
       panel.webview.postMessage({ type: 'error', message, selectedLanguage });
+    } finally {
+      if (this.activeRequest === request) this.activeRequest = undefined;
     }
   }
 
-  private async translateCached(text: string, targetLanguage: string): Promise<string> {
-    const key = `${targetLanguage}\u0000${text}`;
+  private async translateCached(markdown: string, targetLanguage: string, signal: AbortSignal): Promise<string> {
+    const digest = createHash('sha256').update(markdown).digest('hex');
+    const key = `${targetLanguage}\u0000${digest}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
-    const translated = await this.google.translate(text, targetLanguage);
+    const translated = await this.claude.translate(markdown, targetLanguage, signal);
     this.cache.set(key, translated);
     return translated;
   }
@@ -129,6 +140,6 @@ main { padding: 18px 16px 52px; } .file { font: 10px/1.4 ui-monospace, monospace
 .reader { animation: arrive .25s ease-out; } @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 h1,h2,h3,h4 { font-family: 'Bodoni 72', Georgia, serif; line-height: 1.12; letter-spacing: -.015em; margin: 1.45em 0 .55em; } h1 { font-size: 1.8em; } h2 { font-size: 1.45em; } h3 { font-size: 1.18em; } p { margin: .8em 0; } a { color: var(--amber); } blockquote { margin: 1em 0; padding: .15em 0 .15em 14px; border-left: 2px solid var(--amber); color: color-mix(in srgb, var(--ink) 82%, var(--muted)); } pre { overflow: auto; padding: 12px; border: 1px solid var(--line); background: var(--code); font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; } :not(pre) > code { padding: .12em .28em; background: var(--code); font: .85em ui-monospace, monospace; } ul,ol { padding-left: 1.35em; } .task { color: var(--amber); margin-right: 5px; } hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; } table { width: 100%; border-collapse: collapse; font-size: .9em; } td { border: 1px solid var(--line); padding: 6px; vertical-align: top; } .table-wrap { overflow: auto; } img { max-width: 100%; } details { margin-top: 28px; border-top: 1px solid var(--line); color: var(--muted); } summary { cursor: pointer; padding-top: 8px; font: 10px ui-monospace, monospace; }
 </style></head><body><header><div class="masthead"><span class="mark">A</span> Marginal Translation</div><div class="bar"><div class="tabs" id="tabs" role="tablist" aria-label="Translation language"></div><button class="add" id="add" title="Add language">+</button><button class="refresh" id="refresh" title="Refresh translation">↻</button></div><div class="chooser" id="chooser" aria-label="Choose a language"></div></header><main id="app"><div class="status">正在准备中文译文…</div></main>
-<script nonce="${nonce}">const vscode = acquireVsCodeApi(); const app = document.getElementById('app'); const tabs = document.getElementById('tabs'); const chooser = document.getElementById('chooser'); const names = ${languageNames}; const stored = vscode.getState() || {}; const state = { active: stored.active || 'zh-CN', extra: Array.isArray(stored.extra) ? stored.extra : [] }; const base = ['zh-CN', 'original']; const label = key => key === 'original' ? '原文' : names[key] || key; const save = () => vscode.setState(state); const safe = value => { const el = document.createElement('span'); el.textContent = value || ''; return el.innerHTML; }; const keys = () => [...base.slice(0, 1), ...state.extra.filter(key => key !== 'zh-CN' && key !== 'original'), 'original']; function drawTabs() { tabs.innerHTML = keys().map(key => '<button class="tab" role="tab" data-language="' + key + '" aria-selected="' + (key === state.active) + '">' + safe(label(key)) + '</button>').join(''); const available = Object.keys(names).filter(key => !keys().includes(key)); chooser.innerHTML = available.map(key => '<button class="choice" data-language="' + key + '">' + safe(label(key)) + '</button>').join('') || '<span class="status">All languages are open.</span>'; } function select(key) { if (key !== 'zh-CN' && key !== 'original' && !state.extra.includes(key)) state.extra.push(key); state.active = key; save(); chooser.classList.remove('visible'); drawTabs(); vscode.postMessage({type: 'selectLanguage', value: key}); } tabs.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); }); chooser.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); }); document.getElementById('add').addEventListener('click', () => chooser.classList.toggle('visible')); document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({type: 'refresh'})); window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">' + (state.active === 'original' ? '正在渲染原文…' : '正在翻译…') + '</div>'; if (message.type === 'empty') app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; if (message.type === 'error') app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Google Translate could not be reached. Check your network and try again.</div>'; if (message.type === 'document') app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; }); drawTabs(); vscode.postMessage({type: 'ready'}); vscode.postMessage({type: 'selectLanguage', value: state.active});</script></body></html>`;
+<script nonce="${nonce}">const vscode = acquireVsCodeApi(); const app = document.getElementById('app'); const tabs = document.getElementById('tabs'); const chooser = document.getElementById('chooser'); const names = ${languageNames}; const stored = vscode.getState() || {}; const state = { active: stored.active || 'zh-CN', extra: Array.isArray(stored.extra) ? stored.extra : [] }; const base = ['zh-CN', 'original']; const label = key => key === 'original' ? '原文' : names[key] || key; const save = () => vscode.setState(state); const safe = value => { const el = document.createElement('span'); el.textContent = value || ''; return el.innerHTML; }; const keys = () => [...base.slice(0, 1), ...state.extra.filter(key => key !== 'zh-CN' && key !== 'original'), 'original']; function drawTabs() { tabs.innerHTML = keys().map(key => '<button class="tab" role="tab" data-language="' + key + '" aria-selected="' + (key === state.active) + '">' + safe(label(key)) + '</button>').join(''); const available = Object.keys(names).filter(key => !keys().includes(key)); chooser.innerHTML = available.map(key => '<button class="choice" data-language="' + key + '">' + safe(label(key)) + '</button>').join('') || '<span class="status">All languages are open.</span>'; } function select(key) { if (key !== 'zh-CN' && key !== 'original' && !state.extra.includes(key)) state.extra.push(key); state.active = key; save(); chooser.classList.remove('visible'); drawTabs(); vscode.postMessage({type: 'selectLanguage', value: key}); } tabs.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); }); chooser.addEventListener('click', event => { const key = event.target.closest('[data-language]')?.dataset.language; if (key) select(key); }); document.getElementById('add').addEventListener('click', () => chooser.classList.toggle('visible')); document.getElementById('refresh').addEventListener('click', () => vscode.postMessage({type: 'refresh'})); window.addEventListener('message', event => { const message = event.data; if (message.selectedLanguage && message.selectedLanguage !== state.active) return; if (message.type === 'loading') app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><div class="status">' + (state.active === 'original' ? '正在渲染原文…' : 'Claude Haiku 正在翻译…') + '</div>'; if (message.type === 'empty') app.innerHTML = '<div class="status">打开一个 Markdown 文件，即可在这里阅读。</div>'; if (message.type === 'error') app.innerHTML = '<div class="error"><strong>Translation unavailable</strong>' + safe(message.message) + '<br><br>Claude Code could not complete this translation. Confirm that Claude Code is installed and signed in, then try again.</div>'; if (message.type === 'document') app.innerHTML = '<div class="file">' + safe(message.fileName) + '</div><article class="reader">' + message.html + '</article>'; }); drawTabs(); vscode.postMessage({type: 'ready'}); vscode.postMessage({type: 'selectLanguage', value: state.active});</script></body></html>`;
   }
 }

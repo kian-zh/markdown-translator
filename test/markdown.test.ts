@@ -1,33 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { translateMarkdown } from '../src/markdown';
+import { renderMarkdown } from '../src/markdown';
 
-test('only natural-language Markdown text is sent for translation', async () => {
-  const requests: string[] = [];
-  const markdown = `---
-title: Do not translate metadata
+test('renders Markdown while preserving code and frontmatter for display', () => {
+  const html = renderMarkdown(`---
+title: Keep metadata
 ---
 
 # Hello \`const unchanged = true\`
 
-Use [the guide](https://example.com/docs) before running this:
-
-\`npm run build\`
-
 \`\`\`ts
-const greeting = 'do not translate';
+const greeting = 'unchanged';
 \`\`\`
-`;
+`);
 
-  const result = await translateMarkdown(markdown, async value => {
-    requests.push(value);
-    return `[${value}]`;
-  });
-
-  assert.deepEqual(requests, ['Hello ', 'Use ', 'the guide', ' before running this:']);
-  assert.match(result.translatedHtml, /const unchanged = true/);
-  assert.match(result.translatedHtml, /npm run build/);
-  assert.match(result.translatedHtml, /const greeting = &#39;do not translate&#39;;/);
-  assert.match(result.translatedHtml, /title: Do not translate metadata/);
-  assert.match(result.translatedHtml, /https:\/\/example\.com\/docs/);
+  assert.match(html, /const unchanged = true/);
+  assert.match(html, /const greeting = &#39;unchanged&#39;;/);
+  assert.match(html, /title: Keep metadata/);
 });
