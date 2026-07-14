@@ -1,0 +1,21 @@
+package.json
+  s_acc3c7993cb8ea::t_e57f27a00c3c3f 41-42
+media/zh-glyph-icon.svg
+  s_acc3c7993cb8ea::t_e57f27a00c3c3f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "d4bffc94637fadb3f471b9602f6079c135777124",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
