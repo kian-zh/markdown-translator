@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { GoogleWebTranslate } from './googleWebTranslate';
 import { renderMarkdown, translateMarkdown } from './markdown';
+import { isRefreshRequest } from './webviewMessages';
 
 const MARKDOWN_LANGUAGES = new Set(['markdown', 'mdx']);
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -36,7 +37,9 @@ class TranslationReader {
       return;
     }
     this.document = document;
+    let created = false;
     if (!this.panel) {
+      created = true;
       this.panel = vscode.window.createWebviewPanel(
         'markdownTranslator.reader',
         'Markdown Translation',
@@ -45,7 +48,7 @@ class TranslationReader {
       );
       this.panel.webview.html = this.shell(this.panel.webview);
       this.panel.webview.onDidReceiveMessage(message => {
-        if (message?.type === 'ready' || message?.type === 'refresh') this.refresh();
+        if (isRefreshRequest(message)) this.refresh();
         if (message?.type === 'selectLanguage' && typeof message.value === 'string' && (message.value === 'original' || message.value in LANGUAGE_NAMES)) {
           this.activeLanguage = message.value;
           this.refresh();
@@ -59,7 +62,7 @@ class TranslationReader {
     } else {
       this.panel.reveal(vscode.ViewColumn.Beside);
     }
-    this.refresh();
+    if (!created) this.refresh();
   }
 
   follow(document?: vscode.TextDocument): void {
