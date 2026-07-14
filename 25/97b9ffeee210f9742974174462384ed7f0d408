@@ -1,0 +1,21 @@
+media/zh-icon.svg
+  s_acc3c7993cb8ea::t_57f5468da374df 3-4
+package.json
+  s_acc3c7993cb8ea::t_57f5468da374df 41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "2597b9ffeee210f9742974174462384ed7f0d408",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
