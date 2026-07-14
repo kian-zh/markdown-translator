@@ -14,10 +14,19 @@ type Node = {
   checked?: boolean | null;
   children?: Node[];
   position?: {
+    start?: {
+      offset?: number;
+    };
     end?: {
       offset?: number;
     };
   };
+};
+
+export type MarkdownBlock = {
+  type: string;
+  depth?: number;
+  startOffset: number;
 };
 
 const parser = unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter, ['yaml', 'toml']);
@@ -25,6 +34,59 @@ const parser = unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter, 
 /** Renders Markdown without ever calling a translation provider. */
 export function renderMarkdown(markdown: string): string {
   return render(parser.parse(markdown) as unknown as Node);
+}
+
+/** Renders top-level Markdown blocks with optional source-file scroll anchors. */
+export function renderMarkdownBlocks(markdown: string, sourceOffsets: number[]): string {
+  const root = parser.parse(markdown) as unknown as Node;
+  return (root.children ?? []).map((node, index) => {
+    const offset = sourceOffsets[index];
+    const attribute = Number.isInteger(offset) && offset >= 0 ? ` data-source-offset="${offset}"` : '';
+    return `<section class="markdown-block"${attribute}>${render(node)}</section>`;
+  }).join('');
+}
+
+/** Returns the source offsets of top-level Markdown blocks. */
+export function markdownBlocks(markdown: string): MarkdownBlock[] {
+  const root = parser.parse(markdown) as unknown as Node;
+  return (root.children ?? []).flatMap(node => {
+    const startOffset = node.position?.start?.offset;
+    return typeof startOffset === 'number'
+      ? [{ type: node.type, depth: node.depth, startOffset }]
+      : [];
+  });
+}
+
+/**
+ * Maps translated top-level blocks back to source offsets. Matching is both
+ * monotonic and type-aware, so a heading/list/code block remains aligned even
+ * when translated prose has a different length.
+ */
+export function mapTranslatedBlocksToSource(source: string, translated: string): number[] {
+  const sourceBlocks = markdownBlocks(source);
+  const translatedBlocks = markdownBlocks(translated);
+  if (!sourceBlocks.length) return translatedBlocks.map(() => 0);
+
+  let previousSourceIndex = 0;
+  return translatedBlocks.map((translatedBlock, translatedIndex) => {
+    const expected = translatedBlocks.length <= 1 || sourceBlocks.length <= 1
+      ? 0
+      : (translatedIndex * (sourceBlocks.length - 1)) / (translatedBlocks.length - 1);
+    let bestIndex = previousSourceIndex;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (let sourceIndex = previousSourceIndex; sourceIndex < sourceBlocks.length; sourceIndex++) {
+      const sourceBlock = sourceBlocks[sourceIndex];
+      let score = -Math.abs(sourceIndex - expected) * 2;
+      if (sourceBlock.type === translatedBlock.type) score += 12;
+      if (sourceBlock.type === 'heading' && translatedBlock.type === 'heading' && sourceBlock.depth === translatedBlock.depth) score += 4;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = sourceIndex;
+      }
+    }
+    previousSourceIndex = bestIndex;
+    return sourceBlocks[bestIndex].startOffset;
+  });
 }
 
 /**

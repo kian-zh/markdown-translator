@@ -22,6 +22,8 @@ Open a translated Markdown reader beside the active file in Cursor. The extensio
   在当前扩展会话中缓存成功译文，并在文档或语言改变时取消过期请求。
 - Editing the source file never starts a new translation automatically; use the reader's refresh button when you want an updated translation.
   编辑源文件不会自动发起新的翻译；需要更新译文时，请使用阅读器内的刷新按钮。
+- Once a translation is complete, scrolling the reader moves the visible source editor to the corresponding Markdown block. This is one-way (translation → source) and does not change your cursor or file.
+  译文完成后，滚动阅读器会将可见的原文编辑器定位到对应的 Markdown 段落块。该联动为单向（译文 → 原文），不会修改光标或文件内容。
 
 ## Requirements / 前置条件
 
