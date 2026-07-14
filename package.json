@@ -37,10 +37,7 @@
       {
         "command": "markdownTranslator.open",
         "title": "Markdown Translator: Open Reader",
-        "icon": {
-          "light": "media/icon.svg",
-          "dark": "media/icon.svg"
-        }
+        "icon": "$(book)"
       }
     ],
     "menus": {
@@ -48,7 +45,7 @@
         {
           "command": "markdownTranslator.open",
           "when": "resourceLangId == markdown || resourceLangId == mdx",
-          "group": "navigation@0"
+          "group": "navigation"
         }
       ]
     }
