@@ -1,0 +1,19 @@
+package.json
+  s_acc3c7993cb8ea::t_9902f8a34dd254 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "eb0b28ba1c7f228937fda35bb1391a92b5e14a96",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
