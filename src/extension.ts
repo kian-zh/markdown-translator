@@ -16,10 +16,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('markdownTranslator.refresh', () => reader.refresh()),
     vscode.commands.registerCommand('markdownTranslator.open', () => reader.open()),
-    vscode.window.onDidChangeActiveTextEditor(editor => reader.follow(editor?.document)),
-    vscode.workspace.onDidChangeTextDocument(event => {
-      if (event.document === reader.document) reader.refreshDebounced();
-    })
+    vscode.window.onDidChangeActiveTextEditor(editor => reader.follow(editor?.document))
   );
 }
 
@@ -30,7 +27,6 @@ class TranslationReader {
   private readonly cache = new Map<string, string>();
   private activeLanguage = 'zh-CN';
   private generation = 0;
-  private timer?: NodeJS.Timeout;
   private activeRequest?: AbortController;
 
   open(): void {
@@ -75,11 +71,6 @@ class TranslationReader {
       this.document = document;
       this.refresh();
     }
-  }
-
-  refreshDebounced(): void {
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.refresh(), 450);
   }
 
   async refresh(): Promise<void> {

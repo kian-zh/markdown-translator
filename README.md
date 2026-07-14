@@ -20,6 +20,8 @@ Open a translated Markdown reader beside the active file in Cursor. The extensio
   每次响应后校验受保护的 Markdown。若 Claude 改动了受保护内容，扩展会重试一次；仍不符合时不会展示该结果。
 - Cache successful translations during the current extension session and cancel obsolete requests when the document or language changes.
   在当前扩展会话中缓存成功译文，并在文档或语言改变时取消过期请求。
+- Editing the source file never starts a new translation automatically; use the reader's refresh button when you want an updated translation.
+  编辑源文件不会自动发起新的翻译；需要更新译文时，请使用阅读器内的刷新按钮。
 
 ## Requirements / 前置条件
 
