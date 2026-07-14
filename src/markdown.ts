@@ -16,7 +16,6 @@ type Node = {
 };
 
 export interface RenderedMarkdown {
-  originalHtml: string;
   translatedHtml: string;
 }
 
@@ -26,7 +25,6 @@ export async function translateMarkdown(
   markdown: string,
   translate: (text: string) => Promise<string>
 ): Promise<RenderedMarkdown> {
-  const original = parser.parse(markdown) as unknown as Node;
   const translated = parser.parse(markdown) as unknown as Node;
   const textNodes: Node[] = [];
   collectTranslatableText(translated, [], textNodes);
@@ -35,7 +33,12 @@ export async function translateMarkdown(
     node.value = await translateInChunks(node.value ?? '', translate);
   }
 
-  return { originalHtml: render(original), translatedHtml: render(translated) };
+  return { translatedHtml: render(translated) };
+}
+
+/** Renders Markdown without ever calling a translation provider. */
+export function renderMarkdown(markdown: string): string {
+  return render(parser.parse(markdown) as unknown as Node);
 }
 
 function collectTranslatableText(node: Node, ancestors: string[], found: Node[]): void {

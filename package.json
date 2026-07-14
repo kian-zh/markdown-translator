@@ -50,17 +50,7 @@
         "command": "markdownTranslator.open",
         "title": "Markdown Translator: Open Reader"
       }
-    ],
-    "configuration": {
-      "title": "Markdown Translator",
-      "properties": {
-        "markdownTranslator.targetLanguage": {
-          "type": "string",
-          "default": "zh-CN",
-          "description": "Language used for Markdown translations."
-        }
-      }
-    }
+    ]
   },
   "scripts": {
     "build": "node esbuild.js --production",

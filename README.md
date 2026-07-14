@@ -12,8 +12,8 @@ Read the active Markdown file in a Cursor sidebar, translated directly through G
   在专用侧边栏阅读器中渲染译文。
 - Keeps fenced code, inline code, YAML/TOML frontmatter, raw HTML, and link URLs out of translation requests.
   围栏代码块、行内代码、YAML/TOML Frontmatter、原始 HTML 与链接 URL 不会进入翻译请求。
-- Lets readers switch the target language from the sidebar.
-  可在侧边栏切换目标语言。
+- Opens Chinese by default, with tabs for the original text and any additional translation languages.
+  默认打开中文译文，并通过标签切换原文或新增的其他语言。
 - Caches repeated text locally for the current extension session.
   在当前扩展会话中本地缓存重复文本。
 
