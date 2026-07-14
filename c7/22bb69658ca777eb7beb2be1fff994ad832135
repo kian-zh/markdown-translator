@@ -1,0 +1,35 @@
+README.md
+  s_acc3c7993cb8ea::t_cb46bf1531dd6d 25-26
+src/extension.ts
+  s_acc3c7993cb8ea::t_422fe48affc85f 4-5,51,125,148-154
+  s_acc3c7993cb8ea::t_ec10efc40d1c85 186-187,198-199,204
+  s_acc3c7993cb8ea::t_298cf8effc48e2 155-156
+test/extension.test.ts
+  s_acc3c7993cb8ea::t_422fe48affc85f 3,9-13
+  s_acc3c7993cb8ea::t_51f56056086552 14
+src/markdown.ts
+  s_acc3c7993cb8ea::t_422fe48affc85f 17-19,26-31,39-90
+  s_acc3c7993cb8ea::t_b25bad2810e0bc 91
+src/webviewMessages.ts
+  s_acc3c7993cb8ea::t_422fe48affc85f 4-5,7
+  s_acc3c7993cb8ea::t_9a4599ef84e3b5 6
+test/markdown.test.ts
+  s_acc3c7993cb8ea::t_422fe48affc85f 3,36-44
+  s_acc3c7993cb8ea::t_32d5320d5dea31 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "c722bb69658ca777eb7beb2be1fff994ad832135",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
