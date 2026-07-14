@@ -1,0 +1,23 @@
+.vscode/tasks.json
+  s_acc3c7993cb8ea::t_99c3c27e962f6c 1-18
+.vscode/launch.json
+  s_acc3c7993cb8ea::t_99c3c27e962f6c 1-17
+README.md
+  s_acc3c7993cb8ea::t_99c3c27e962f6c 42,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "f197eccf686d269a4bb303b7d75900021b96a8d9",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
