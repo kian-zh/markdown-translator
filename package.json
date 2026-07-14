@@ -48,7 +48,7 @@
         {
           "command": "markdownTranslator.open",
           "when": "resourceLangId == markdown || resourceLangId == mdx",
-          "group": "navigation@1"
+          "group": "navigation@0"
         }
       ]
     }
