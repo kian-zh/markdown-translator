@@ -1,13 +1,15 @@
 # Markdown Translator / Markdown 文档翻译器
 
-Read the active Markdown file in a Cursor sidebar, translated directly through Google Translate's web service. Code stays exactly as written.
+Open a translation reader beside the active Markdown file in Cursor, translated directly through Google Translate's web service. Code stays exactly as written.
 
-在 Cursor 侧边栏中阅读当前 Markdown 文档的译文，直接使用 Google 翻译网页服务。代码内容保持完全不变。
+在 Cursor 中于当前 Markdown 文档旁打开译文阅读器，直接使用 Google 翻译网页服务。代码内容保持完全不变。
 
 ## What it does / 功能
 
-- Follows the active Markdown editor.
-  跟随当前活动的 Markdown 编辑器。
+- Opens from the Markdown editor toolbar and appears in a split editor column beside the source file.
+  通过 Markdown 编辑器右上角的按钮打开，并在源文件右侧以分屏编辑器列展示。
+- Follows the active Markdown editor while the reader panel is open.
+  阅读面板打开后，会跟随当前活动的 Markdown 编辑器。
 - Renders a translation in a dedicated sidebar reader.
   在专用侧边栏阅读器中渲染译文。
 - Keeps fenced code, inline code, YAML/TOML frontmatter, raw HTML, and link URLs out of translation requests.

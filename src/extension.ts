@@ -11,39 +11,62 @@ const LANGUAGE_NAMES: Record<string, string> = {
 export function activate(context: vscode.ExtensionContext): void {
   const reader = new TranslationReader();
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider('markdownTranslator.reader', reader, { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.commands.registerCommand('markdownTranslator.refresh', () => reader.refresh()),
-    vscode.commands.registerCommand('markdownTranslator.open', async () => {
-      await vscode.commands.executeCommand('workbench.view.extension.markdownTranslator');
-      reader.refresh();
-    }),
-    vscode.window.onDidChangeActiveTextEditor(() => reader.refresh()),
+    vscode.commands.registerCommand('markdownTranslator.open', () => reader.open()),
+    vscode.window.onDidChangeActiveTextEditor(editor => reader.follow(editor?.document)),
     vscode.workspace.onDidChangeTextDocument(event => {
-      if (event.document === vscode.window.activeTextEditor?.document) reader.refreshDebounced();
+      if (event.document === reader.document) reader.refreshDebounced();
     })
   );
 }
 
-class TranslationReader implements vscode.WebviewViewProvider {
-  private view?: vscode.WebviewView;
+class TranslationReader {
+  private panel?: vscode.WebviewPanel;
+  document?: vscode.TextDocument;
   private readonly google = new GoogleWebTranslate();
   private readonly cache = new Map<string, string>();
   private activeLanguage = 'zh-CN';
   private generation = 0;
   private timer?: NodeJS.Timeout;
 
-  resolveWebviewView(view: vscode.WebviewView): void {
-    this.view = view;
-    view.webview.options = { enableScripts: true };
-    view.webview.html = this.shell(view.webview);
-    view.webview.onDidReceiveMessage(message => {
-      if (message?.type === 'ready' || message?.type === 'refresh') this.refresh();
-      if (message?.type === 'selectLanguage' && typeof message.value === 'string' && (message.value === 'original' || message.value in LANGUAGE_NAMES)) {
-        this.activeLanguage = message.value;
-        this.refresh();
-      }
-    });
+  open(): void {
+    const document = vscode.window.activeTextEditor?.document;
+    if (!document || !MARKDOWN_LANGUAGES.has(document.languageId)) {
+      void vscode.window.showInformationMessage('Markdown Translator: open a Markdown file first.');
+      return;
+    }
+    this.document = document;
+    if (!this.panel) {
+      this.panel = vscode.window.createWebviewPanel(
+        'markdownTranslator.reader',
+        'Markdown Translation',
+        vscode.ViewColumn.Beside,
+        { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [] }
+      );
+      this.panel.webview.html = this.shell(this.panel.webview);
+      this.panel.webview.onDidReceiveMessage(message => {
+        if (message?.type === 'ready' || message?.type === 'refresh') this.refresh();
+        if (message?.type === 'selectLanguage' && typeof message.value === 'string' && (message.value === 'original' || message.value in LANGUAGE_NAMES)) {
+          this.activeLanguage = message.value;
+          this.refresh();
+        }
+      });
+      this.panel.onDidDispose(() => {
+        this.panel = undefined;
+        this.document = undefined;
+        this.generation++;
+      });
+    } else {
+      this.panel.reveal(vscode.ViewColumn.Beside);
+    }
     this.refresh();
+  }
+
+  follow(document?: vscode.TextDocument): void {
+    if (this.panel && document && MARKDOWN_LANGUAGES.has(document.languageId)) {
+      this.document = document;
+      this.refresh();
+    }
   }
 
   refreshDebounced(): void {
@@ -52,29 +75,25 @@ class TranslationReader implements vscode.WebviewViewProvider {
   }
 
   async refresh(): Promise<void> {
-    const view = this.view;
-    if (!view) return;
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || !MARKDOWN_LANGUAGES.has(editor.document.languageId)) {
-      view.webview.postMessage({ type: 'empty' });
-      return;
-    }
+    const panel = this.panel;
+    const document = this.document;
+    if (!panel || !document) return;
 
     const generation = ++this.generation;
-    const source = editor.document.getText();
-    const fileName = vscode.workspace.asRelativePath(editor.document.uri);
+    const source = document.getText();
+    const fileName = vscode.workspace.asRelativePath(document.uri);
     const selectedLanguage = this.activeLanguage;
-    view.webview.postMessage({ type: 'loading', fileName, selectedLanguage });
+    panel.webview.postMessage({ type: 'loading', fileName, selectedLanguage });
     try {
       const html = selectedLanguage === 'original'
         ? renderMarkdown(source)
         : (await translateMarkdown(source, text => this.translateCached(text, selectedLanguage))).translatedHtml;
       if (generation !== this.generation) return;
-      view.webview.postMessage({ type: 'document', html, fileName, selectedLanguage });
+      panel.webview.postMessage({ type: 'document', html, fileName, selectedLanguage });
     } catch (error) {
       if (generation !== this.generation) return;
       const message = error instanceof Error ? error.message : 'Unknown translation error';
-      view.webview.postMessage({ type: 'error', message, selectedLanguage });
+      panel.webview.postMessage({ type: 'error', message, selectedLanguage });
     }
   }
 

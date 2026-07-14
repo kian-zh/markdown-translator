@@ -25,23 +25,6 @@
   "main": "./dist/extension.js",
   "icon": "media/icon.png",
   "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "markdownTranslator",
-          "title": "Markdown Translator",
-          "icon": "media/icon.svg"
-        }
-      ]
-    },
-    "views": {
-      "markdownTranslator": [
-        {
-          "id": "markdownTranslator.reader",
-          "name": "Translated Reader"
-        }
-      ]
-    },
     "commands": [
       {
         "command": "markdownTranslator.refresh",
@@ -49,9 +32,22 @@
       },
       {
         "command": "markdownTranslator.open",
-        "title": "Markdown Translator: Open Reader"
+        "title": "Markdown Translator: Open Reader",
+        "icon": {
+          "light": "media/icon.svg",
+          "dark": "media/icon.svg"
+        }
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "markdownTranslator.open",
+          "when": "resourceLangId == markdown || resourceLangId == mdx",
+          "group": "navigation@1"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "node esbuild.js --production",
