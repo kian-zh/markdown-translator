@@ -1,0 +1,25 @@
+package.json
+  s_acc3c7993cb8ea::t_caac2dfad35418 50
+  s_acc3c7993cb8ea::t_c3f7cfc742d344 35-39,41-49
+README.md
+  s_acc3c7993cb8ea::t_c3f7cfc742d344 3,5,9-12
+src/extension.ts
+  s_acc3c7993cb8ea::t_813dee7346eeeb 54-58
+  s_acc3c7993cb8ea::t_c3f7cfc742d344 15-16,18,23-25,32-53,59-61,65-71,78-80,83-84,86,92,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "e1d2db1a7448cb7c96f917b653fc89baa52bb272",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
