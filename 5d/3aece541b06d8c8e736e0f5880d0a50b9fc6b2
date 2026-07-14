@@ -1,0 +1,21 @@
+README.md
+  s_acc3c7993cb8ea::t_c59c72a1abf141 23-24
+src/extension.ts
+  s_acc3c7993cb8ea::t_c59c72a1abf141 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "5d3aece541b06d8c8e736e0f5880d0a50b9fc6b2",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
