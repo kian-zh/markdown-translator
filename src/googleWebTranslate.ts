@@ -2,6 +2,10 @@ const GoogleToken: {
   get(text: string, options: { tld: string }): Promise<{ name: string; value: string }>;
 } = require('google-translate-token-with-mirror');
 
+export function googleWebTokenOptions(): { tld: string; mirror: string } {
+  return { tld: 'com', mirror: '' };
+}
+
 /**
  * Adapter for the same unauthenticated web endpoint used by Google Translate.
  * This is intentionally isolated: it is an unofficial interface and may change.
@@ -10,7 +14,7 @@ export class GoogleWebTranslate {
   async translate(text: string, targetLanguage: string): Promise<string> {
     if (!text.trim()) return text;
 
-    const token = await GoogleToken.get(text, { tld: 'com' });
+    const token = await GoogleToken.get(text, googleWebTokenOptions());
     const query = new URLSearchParams({
       client: 'gtx',
       sl: 'auto',
