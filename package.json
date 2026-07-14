@@ -38,8 +38,8 @@
         "command": "markdownTranslator.open",
         "title": "Markdown Translator: Open Reader",
         "icon": {
-          "light": "media/zh-icon.svg",
-          "dark": "media/zh-icon.svg"
+          "light": "media/zh-glyph-icon.svg",
+          "dark": "media/zh-glyph-icon.svg"
         }
       }
     ],
