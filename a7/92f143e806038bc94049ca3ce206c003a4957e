@@ -1,0 +1,28 @@
+src/claudeCliTranslate.ts
+  s_acc3c7993cb8ea::t_b659a33393b0aa 20-36,48-50,71,78-79,87,98,100-101,121-128,131-141,149-153,155
+  s_acc3c7993cb8ea::t_f4f9a1d33a8c93 129-130
+src/extension.ts
+  s_acc3c7993cb8ea::t_213eab5a1d5f08 3,139
+  s_acc3c7993cb8ea::t_3a47881335fe62 8,98-109,113-125,130,144
+  s_acc3c7993cb8ea::t_28ffb47437c150 163,178,186-188,193
+README.md
+  s_acc3c7993cb8ea::t_d5f4756f3e5ccb 15-16
+test/claudeCliTranslate.test.ts
+  s_acc3c7993cb8ea::t_d9d08a44700d31 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "a792f143e806038bc94049ca3ce206c003a4957e",
+  "prompts": {},
+  "sessions": {
+    "s_acc3c7993cb8ea": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6063-3518-7622-b2cc-574e7fa8da59",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "jingyuan <zjingyuan@trip.com>"
+    }
+  }
+}
