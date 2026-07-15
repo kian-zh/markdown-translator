@@ -25,17 +25,22 @@ Open a translated Markdown reader beside the active file in Cursor. The extensio
 
 ## Requirements / 前置条件
 
-Claude Code must be installed and signed in on the same machine that runs Cursor. No API key, extension setting, or separate account configuration is required.
+> **Required: a working local Claude Code environment.** This extension does not include Claude Code, an Anthropic API key, or a fallback translation service. Claude Code must be installed, signed in, and able to complete a local command-line request on the same machine that runs VS Code or Cursor.
 
-运行 Cursor 的同一台电脑必须已经安装并登录 Claude Code。不需要 API Key、扩展设置或额外账户配置。
+> **必须具备可用的本地 Claude Code 环境。** 本扩展不内置 Claude Code、不提供 Anthropic API Key，也没有备用翻译服务。运行 VS Code 或 Cursor 的同一台电脑必须已安装并登录 Claude Code，且 Claude 命令本身能够正常完成请求。
+
+Before installing the extension, run this check in the integrated terminal:
+
+安装扩展前，请在集成终端执行以下检查：
 
 ```sh
 claude --version
+claude -p "Reply with OK only."
 ```
 
-If this command is unavailable, install Claude Code and complete its normal sign-in flow first. The extension runs Claude with `--safe-mode`, disables tools, and uses `--no-session-persistence`.
+Both commands must succeed. If either command fails, install or repair Claude Code and complete its normal sign-in flow first. The extension runs Claude with `--safe-mode`, disables tools, and uses `--no-session-persistence`.
 
-如果该命令不可用，请先安装 Claude Code 并完成其常规登录流程。扩展会以 `--safe-mode` 运行 Claude、禁用工具，并使用 `--no-session-persistence`。
+两条命令都必须成功。若任一命令失败，请先安装或修复 Claude Code 并完成其常规登录流程。扩展会以 `--safe-mode` 运行 Claude、禁用工具，并使用 `--no-session-persistence`。
 
 ## Privacy and cost / 隐私与费用
 
@@ -55,9 +60,15 @@ npm test
 npm run build
 ```
 
-Press `F5` and select `Run Extension` in VS Code/Cursor to open an Extension Development Host. The configuration runs `npm: build` first. While iterating, run the `Watch Extension` task from **Tasks: Run Task**, then reload the development host after changes. Before publishing, publish the generated VSIX to Open VSX.
+Press `F5` and select `Run Extension` in VS Code/Cursor to open an Extension Development Host. The configuration runs `npm: build` first. While iterating, run the `Watch Extension` task from **Tasks: Run Task**, then reload the development host after changes.
 
-在 VS Code 或 Cursor 中按 `F5` 并选择 `Run Extension`，即可打开 Extension Development Host；该配置会先执行 `npm: build`。持续开发时，从 **Tasks: Run Task** 启动 `Watch Extension`，代码变更后重新加载开发宿主。发布前，将生成的 VSIX 发布到 Open VSX。
+在 VS Code 或 Cursor 中按 `F5` 并选择 `Run Extension`，即可打开 Extension Development Host；该配置会先执行 `npm: build`。持续开发时，从 **Tasks: Run Task** 启动 `Watch Extension`，代码变更后重新加载开发宿主。
+
+## Release / 发布
+
+See [RELEASING.md](RELEASING.md) for the dual-marketplace checklist: publish the same VSIX to the Visual Studio Marketplace for VS Code and to Open VSX for Cursor.
+
+双市场发布清单见 [RELEASING.md](RELEASING.md)：将同一个 VSIX 发布到 Visual Studio Marketplace（VS Code）和 Open VSX（Cursor）。
 
 ## License / 许可证
 

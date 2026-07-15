@@ -1,5 +1,7 @@
 .git/**
+.gitignore
 .vscode/**
+RELEASING.md
 src/**
 test/**
 node_modules/**

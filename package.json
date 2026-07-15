@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "publisher": "kian-zh",
   "license": "MIT",
+  "homepage": "https://github.com/kian-zh/markdown-translator#readme",
+  "bugs": {
+    "url": "https://github.com/kian-zh/markdown-translator/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/kian-zh/markdown-translator"
@@ -15,6 +19,10 @@
   "categories": [
     "Other"
   ],
+  "galleryBanner": {
+    "color": "#D97757",
+    "theme": "light"
+  },
   "keywords": [
     "markdown",
     "translate",
@@ -54,15 +62,17 @@
     }
   },
   "scripts": {
+    "vscode:prepublish": "npm run build",
     "build": "node esbuild.js --production",
     "watch": "node esbuild.js --watch",
     "check": "tsc --noEmit",
     "test": "npm run check && tsx --test test/*.test.ts",
-    "package": "npm run check && npm run build"
+    "package": "npm run check && npm run build",
+    "vsix": "npm run package && npx @vscode/vsce package --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
-    "@types/vscode": "^1.125.0",
+    "@types/vscode": "1.92.0",
     "esbuild": "^0.28.1",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
