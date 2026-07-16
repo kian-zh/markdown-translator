@@ -1,8 +1,18 @@
-# Markdown Translator / Markdown 文档翻译器
+# Claude Markdown Translator / Claude Markdown 文档翻译器
 
-Open a translated Markdown reader beside the active file in Cursor. The extension uses the Claude Code CLI already signed in on your computer, with Claude Haiku at low effort.
+Open a translated Markdown reader beside the active file in VS Code or Cursor. The extension uses the Claude Code CLI already signed in on your computer, with Claude Haiku at low effort.
 
-在 Cursor 中于当前 Markdown 文件旁打开译文阅读器。扩展复用电脑上已登录的 Claude Code CLI，并使用 Claude Haiku 的 low 推理强度。
+在 VS Code 或 Cursor 中于当前 Markdown 文件旁打开译文阅读器。扩展复用电脑上已登录的 Claude Code CLI，并使用 Claude Haiku 的 low 推理强度。
+
+## Project and community / 项目与社区
+
+Source code, releases, and documentation: [kian-zh/markdown-translator](https://github.com/kian-zh/markdown-translator).
+
+源代码、版本发布与文档：[kian-zh/markdown-translator](https://github.com/kian-zh/markdown-translator)。
+
+If this extension is useful, please [star the repository](https://github.com/kian-zh/markdown-translator/star). For bugs and feature ideas, please [open a GitHub Issue](https://github.com/kian-zh/markdown-translator/issues).
+
+如果这个扩展对你有帮助，欢迎为仓库 [Star](https://github.com/kian-zh/markdown-translator/star)；遇到问题或有功能建议，请在 GitHub [提交 Issue](https://github.com/kian-zh/markdown-translator/issues)。
 
 ## What it does / 功能
 

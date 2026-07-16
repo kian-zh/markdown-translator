@@ -52,9 +52,9 @@ Keep both credentials outside this repository. Never commit tokens or `.env` fil
    将同一个 VSIX 发布到两个仓库：
 
    ```sh
-   npx @vscode/vsce publish --packagePath markdown-translator-<version>.vsix
-   npx ovsx publish markdown-translator-<version>.vsix -p "$OVSX_PAT"
+   npx @vscode/vsce publish --packagePath claude-markdown-translator-<version>.vsix
+   npx ovsx publish claude-markdown-translator-<version>.vsix -p "$OVSX_PAT"
    ```
 
-5. Confirm that `kian-zh.markdown-translator` is searchable in VS Code and Open VSX. Cursor search can lag while its Open VSX mirror completes scanning; the VSIX remains an installation fallback.
-   确认 `kian-zh.markdown-translator` 可在 VS Code 和 Open VSX 中搜索到。Cursor 的 Open VSX 镜像完成扫描前，搜索可能会有延迟；此时仍可通过 VSIX 安装。
+5. Confirm that `kian-zh.claude-markdown-translator` is searchable in VS Code and Open VSX. Cursor search can lag while its Open VSX mirror completes scanning; the VSIX remains an installation fallback.
+   确认 `kian-zh.claude-markdown-translator` 可在 VS Code 和 Open VSX 中搜索到。Cursor 的 Open VSX 镜像完成扫描前，搜索可能会有延迟；此时仍可通过 VSIX 安装。

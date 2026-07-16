@@ -32,7 +32,7 @@ class TranslationReader {
   open(): void {
     const document = vscode.window.activeTextEditor?.document;
     if (!document || !MARKDOWN_LANGUAGES.has(document.languageId)) {
-      void vscode.window.showInformationMessage('Markdown Translator: open a Markdown file first.');
+      void vscode.window.showInformationMessage('Claude Markdown Translator: open a Markdown file first.');
       return;
     }
     this.document = document;

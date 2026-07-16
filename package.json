@@ -1,8 +1,8 @@
 {
-  "name": "markdown-translator",
-  "displayName": "Markdown Translator",
-  "description": "Read Markdown translations in Cursor with your local Claude Code CLI.",
-  "version": "0.1.0",
+  "name": "claude-markdown-translator",
+  "displayName": "Claude Markdown Translator",
+  "description": "Read Markdown translations in VS Code and Cursor with your local Claude Code CLI.",
+  "version": "0.1.1",
   "publisher": "kian-zh",
   "license": "MIT",
   "homepage": "https://github.com/kian-zh/markdown-translator#readme",
@@ -40,11 +40,11 @@
     "commands": [
       {
         "command": "markdownTranslator.refresh",
-        "title": "Markdown Translator: Refresh Translation"
+        "title": "Claude Markdown Translator: Refresh Translation"
       },
       {
         "command": "markdownTranslator.open",
-        "title": "Markdown Translator: Open Reader",
+        "title": "Claude Markdown Translator: Open Reader",
         "icon": {
           "light": "media/zh-glyph-icon.svg",
           "dark": "media/zh-glyph-icon.svg"

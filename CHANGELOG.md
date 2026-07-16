@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 本文件记录项目的主要更新。
 
+## 0.1.1 — 2026-07-16
+
+- Rename the extension to Claude Markdown Translator with the new marketplace identifier `kian-zh.claude-markdown-translator`.
+  将扩展重命名为 Claude Markdown Translator，新的商店标识为 `kian-zh.claude-markdown-translator`。
+- Add GitHub repository, Star, and Issue links to the README.
+  在 README 中添加 GitHub 仓库、Star 和 Issue 链接。
+
 ## 0.1.0 — 2026-07-15
 
 - Initial public release of Markdown Translator.
