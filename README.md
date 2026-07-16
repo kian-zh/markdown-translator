@@ -2,8 +2,8 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/kian-zh/markdown-translator?style=flat&logo=github&label=Stars)](https://github.com/kian-zh/markdown-translator/stargazers)
 [![License](https://img.shields.io/github/license/kian-zh/markdown-translator?style=flat&label=License)](LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/kian-zh/markdown-translator?display_name=tag&style=flat&label=Release)](https://github.com/kian-zh/markdown-translator/releases)
-[![VS Code Marketplace installs](https://img.shields.io/visual-studio-marketplace/i/kian-zh.claude-markdown-translator?style=flat&logo=visualstudiocode&logoColor=white&label=VS%20Code%20Installs)](https://marketplace.visualstudio.com/items?itemName=kian-zh.claude-markdown-translator)
+[![Version](https://img.shields.io/github/package-json/v/kian-zh/markdown-translator?style=flat&label=Version)](https://github.com/kian-zh/markdown-translator/blob/main/package.json)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=kian-zh.claude-markdown-translator)
 [![Open VSX downloads](https://img.shields.io/open-vsx/dt/kian-zh/claude-markdown-translator?style=flat&label=Open%20VSX%20Downloads)](https://open-vsx.org/extension/kian-zh/claude-markdown-translator)
 
 Open a translated Markdown reader beside the active file in VS Code or Cursor. The extension uses the Claude Code CLI already signed in on your computer, with Claude Haiku at low effort.
